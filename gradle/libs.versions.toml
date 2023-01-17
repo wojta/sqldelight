@@ -17,6 +17,7 @@ compileSdk = "31"
 minSdk = "16"
 sqlPsi = "0.4.2"
 testContainers = "1.17.6"
+node-sqlite3 = "5.1.4"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
