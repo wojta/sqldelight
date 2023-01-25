@@ -1,0 +1,41 @@
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
+package node.sqlite3
+
+import Sqlite3
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
+import kotlin.test.Test
+
+class BasicSQLOperationsTest {
+
+
+    @Test
+    fun testCreateDb() = runTest {
+        val db: Sqlite3.Database = Sqlite3.Database("test.db")
+        val res = suspendCoroutine { cont ->
+            db.run(
+                """CREATE TABLE contacts (
+                contact_id INTEGER PRIMARY KEY,
+                first_name TEXT NOT NULL,
+                last_name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                phone TEXT NOT NULL UNIQUE);""", js("{}") as Any
+            ) { self, err ->
+                err?.let { cont.resumeWithException(err) } ?: cont.resume(self)
+            };
+        }
+        println(res)
+        suspendCoroutine { cont ->
+            db.close {
+                it?.let {
+                    cont.resumeWithException(it)
+                } ?: cont.resume(Unit)
+            }
+        }
+    }
+
+}

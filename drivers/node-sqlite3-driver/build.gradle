@@ -5,10 +5,16 @@ plugins {
 }
 
 kotlin {
-    js {
+    js(IR) {
+        useCommonJs()
         nodejs {
-
+            testTask {
+                useMocha {
+                    timeout = "5s"
+                }
+            }
         }
+        binaries.library()
     }
 }
 
@@ -20,7 +26,7 @@ dependencies {
 
     testImplementation libs.kotlin.test.js
     testImplementation libs.kotlin.coroutines.test
-    testImplementation project(':extensions:async-extensions')
+    //testImplementation project(':extensions:async-extensions')
 }
 
 apply from: "$rootDir/gradle/gradle-mvn-push.gradle"
