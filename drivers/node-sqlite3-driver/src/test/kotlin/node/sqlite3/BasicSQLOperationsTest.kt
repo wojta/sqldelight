@@ -2,11 +2,9 @@
 
 package node.sqlite3
 
-import node.sqlite3.Sqlite3
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
-import node.sqlite3.Sqlite3.OPEN_CREATE
-import node.sqlite3.Sqlite3.OPEN_READWRITE
+import org.w3c.files.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -14,10 +12,11 @@ import kotlin.test.Test
 
 class BasicSQLOperationsTest {
 
-
     @Test
     fun testCreateDb() = runTest {
-        val db: Sqlite3.Database = Sqlite3.Database("test.db", mode = OPEN_CREATE.toInt() or OPEN_READWRITE.toInt())
+
+        val x =Sqlite3
+        val db: Sqlite3.Database = Sqlite3.Database("test.db", mode = Sqlite3.OPEN_CREATE.toInt() or Sqlite3.OPEN_READWRITE.toInt())
         val res = suspendCoroutine { cont ->
             db.run(
                 """CREATE TABLE contacts (
@@ -54,7 +53,7 @@ class BasicSQLOperationsTest {
                 } ?: cont.resume(Unit)
             }
         }
+
+        js("require('fs').unlinkSync('test.db')")
     }
-
-
 }

@@ -2,14 +2,25 @@ package cz.sazel.sqldelight.node.sqlite3
 
 import app.cash.sqldelight.Query
 import app.cash.sqldelight.Transacter
-import app.cash.sqldelight.db.QueryResult
-import app.cash.sqldelight.db.SqlCursor
-import app.cash.sqldelight.db.SqlDriver
-import app.cash.sqldelight.db.SqlPreparedStatement
+import app.cash.sqldelight.db.*
+import events.cz.sazel.sqldelight.node.sqlite3.SQLite3Exception
 import node.sqlite3.Sqlite3
+import node.sqlite3.Sqlite3.OPEN_CREATE
+import node.sqlite3.Sqlite3.OPEN_READWRITE
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
-class SQLite3Driver : SqlDriver {
+
+fun initSqlite3Driver(
+    filename: String, mode: Number = OPEN_CREATE.toInt() or OPEN_READWRITE.toInt(),
+    schema: SqlSchema? = null,
+): SqlDriver = SQLite3Driver(Sqlite3.Database(filename, mode))
+
+class SQLite3Driver(private val db: Sqlite3.Database) : SqlDriver {
     private val listeners = mutableMapOf<String, MutableSet<Query.Listener>>()
+    private val statements = mutableMapOf<Int, Sqlite3.Statement>()
     private var transaction: Transacter.Transaction? = null
 
     private inner class Transaction(
@@ -24,6 +35,19 @@ class SQLite3Driver : SqlDriver {
                 }
             }
             transaction = enclosingTransaction
+        }
+    }
+
+    private suspend fun createOrGetStatement(identifier: Int?, sql: String): Sqlite3.Statement {
+        val continuation: (Continuation<Sqlite3.Statement>) -> Unit = { cont ->
+            db.prepare(sql, callback = { self: Any, _ ->
+                if (self !is Error) cont.resume(self as Sqlite3.Statement) else cont.resumeWithException(SQLite3Exception(self))
+            })
+        }
+        return if (identifier == null) {
+            suspendCoroutine(continuation)
+        } else {
+            statements.getOrPut(identifier) { suspendCoroutine(continuation) }.apply { reset() }
         }
     }
 
@@ -44,20 +68,34 @@ class SQLite3Driver : SqlDriver {
     }
 
     override fun addListener(listener: Query.Listener, queryKeys: Array<String>) {
-        TODO("Not yet implemented")
+        queryKeys.forEach {
+            listeners.getOrPut(it) { mutableSetOf() }.add(listener)
+        }
     }
 
     override fun removeListener(listener: Query.Listener, queryKeys: Array<String>) {
-        TODO("Not yet implemented")
+        queryKeys.forEach {
+            listeners[it]?.remove(listener)
+        }
     }
 
     override fun notifyListeners(queryKeys: Array<String>) {
-        TODO("Not yet implemented")
+        queryKeys.flatMap { listeners[it].orEmpty() }
+            .distinct()
+            .forEach(Query.Listener::queryResultsChanged)
     }
 
     override fun close() {
-        TODO("Not yet implemented")
+        db.close {
+            println(it)
+        }
     }
+
+//    private fun createOrGetStatement(identifier: Int?, sql: String): Sqlite3.Statement = if (identifier == null) {
+//        db.prepare(sql)
+//    } else {
+//        statements.getOrPut(identifier, { db.prepare(sql) }).apply { reset() }
+//    }
 
     private fun Sqlite3.Statement.bind(parameters: Int, binders: (SqlPreparedStatement.() -> Unit)?) = binders?.let {
         if (parameters > 0) {

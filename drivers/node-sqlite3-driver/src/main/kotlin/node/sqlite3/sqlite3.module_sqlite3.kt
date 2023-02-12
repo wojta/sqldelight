@@ -2,19 +2,6 @@
 
 package node.sqlite3
 
-import kotlin.js.*
-import org.khronos.webgl.*
-import org.w3c.dom.*
-import org.w3c.dom.events.*
-import org.w3c.dom.parsing.*
-import org.w3c.dom.svg.*
-import org.w3c.dom.url.*
-import org.w3c.fetch.*
-import org.w3c.files.*
-import org.w3c.notifications.*
-import org.w3c.performance.*
-import org.w3c.workers.*
-import org.w3c.xhr.*
 
 @JsModule("sqlite3")
 external object Sqlite3 {
@@ -206,7 +193,7 @@ external object Sqlite3 {
         open fun on(event: String /* "change" */, listener: (type: String, database: String, table: String, rowid: Number) -> Unit): Database /* this */
         open fun on(event: String /* "error" */, listener: (err: Error) -> Unit): Database /* this */
         open fun on(event: String /* "open" | "close" */, listener: () -> Unit): Database /* this */
-        override fun on(event: String, listener: (args: Any) -> Unit): Database /* this */
+        override fun on(eventName: String, listener: (args: Any) -> Unit): Database /* this */
         open fun configure(option: String /* "busyTimeout" */, value: Number)
         open fun configure(option: String /* "limit" */, id: Number, value: Number)
         open fun loadExtension(filename: String, callback: (err: Error?) -> Unit = definedExternally): Database /* this */
