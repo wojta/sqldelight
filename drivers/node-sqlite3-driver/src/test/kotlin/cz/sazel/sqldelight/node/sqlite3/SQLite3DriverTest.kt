@@ -9,13 +9,8 @@ import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.SqlPreparedStatement
 import app.cash.sqldelight.db.SqlSchema
-import kotlin.test.Test
-import kotlin.test.assertContains
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import kotlinx.coroutines.await
+import kotlin.test.*
 
 typealias InsertFunction = suspend (SqlPreparedStatement.() -> Unit) -> Unit
 
@@ -59,18 +54,19 @@ class SQLite3DriverTest {
 
     private fun runTest(block: suspend (SqlDriver) -> Unit) = kotlinx.coroutines.test.runTest {
         try {
-            val driver = initSqlite3Driver("test.db", schema = schema)
+            val driver = initSqlite3SqlDriver("test.db", schema = schema)
             block(driver)
             driver.close()
         } catch (e: Exception) {
             e.printStackTrace()
+            fail(e.message)
         }
     }
 
-//    @Test
-//    fun test_just_driver_init() = runTest {
-//        println("Driver init")
-//    }
+    @Test
+    fun test_just_driver_init() = runTest {
+        println("Driver init")
+    }
 
     @Test
     fun insert_can_run_multiple_times() = runTest { driver ->

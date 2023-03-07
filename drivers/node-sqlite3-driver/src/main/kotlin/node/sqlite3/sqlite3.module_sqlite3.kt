@@ -6,115 +6,115 @@ package node.sqlite3
 @JsModule("sqlite3")
 external object Sqlite3 {
 
-     var OPEN_READONLY: Number
+    var OPEN_READONLY: Number
 
-     var OPEN_READWRITE: Number
+    var OPEN_READWRITE: Number
 
-     var OPEN_CREATE: Number
+    var OPEN_CREATE: Number
 
-     var OPEN_FULLMUTEX: Number
+    var OPEN_FULLMUTEX: Number
 
-     var OPEN_SHAREDCACHE: Number
+    var OPEN_SHAREDCACHE: Number
 
-     var OPEN_PRIVATECACHE: Number
+    var OPEN_PRIVATECACHE: Number
 
-     var OPEN_URI: Number
+    var OPEN_URI: Number
 
-     var VERSION: String
+    var VERSION: String
 
-     var SOURCE_ID: String
+    var SOURCE_ID: String
 
-     var VERSION_NUMBER: Number
+    var VERSION_NUMBER: Number
 
-     var OK: Number
+    var OK: Number
 
-     var ERROR: Number
+    var ERROR: Number
 
-     var INTERNAL: Number
+    var INTERNAL: Number
 
-     var PERM: Number
+    var PERM: Number
 
-     var ABORT: Number
+    var ABORT: Number
 
-     var BUSY: Number
+    var BUSY: Number
 
-     var LOCKED: Number
+    var LOCKED: Number
 
-     var NOMEM: Number
+    var NOMEM: Number
 
-     var READONLY: Number
+    var READONLY: Number
 
-     var INTERRUPT: Number
+    var INTERRUPT: Number
 
-     var IOERR: Number
+    var IOERR: Number
 
-     var CORRUPT: Number
+    var CORRUPT: Number
 
-     var NOTFOUND: Number
+    var NOTFOUND: Number
 
-     var FULL: Number
+    var FULL: Number
 
-     var CANTOPEN: Number
+    var CANTOPEN: Number
 
-     var PROTOCOL: Number
+    var PROTOCOL: Number
 
-     var EMPTY: Number
+    var EMPTY: Number
 
-     var SCHEMA: Number
+    var SCHEMA: Number
 
-     var TOOBIG: Number
+    var TOOBIG: Number
 
-     var CONSTRAINT: Number
+    var CONSTRAINT: Number
 
-     var MISMATCH: Number
+    var MISMATCH: Number
 
-     var MISUSE: Number
+    var MISUSE: Number
 
-     var NOLFS: Number
+    var NOLFS: Number
 
-     var AUTH: Number
+    var AUTH: Number
 
-     var FORMAT: Number
+    var FORMAT: Number
 
-     var RANGE: Number
+    var RANGE: Number
 
-     var NOTADB: Number
+    var NOTADB: Number
 
-     var LIMIT_LENGTH: Number
+    var LIMIT_LENGTH: Number
 
-     var LIMIT_SQL_LENGTH: Number
+    var LIMIT_SQL_LENGTH: Number
 
-     var LIMIT_COLUMN: Number
+    var LIMIT_COLUMN: Number
 
-     var LIMIT_EXPR_DEPTH: Number
+    var LIMIT_EXPR_DEPTH: Number
 
-     var LIMIT_COMPOUND_SELECT: Number
+    var LIMIT_COMPOUND_SELECT: Number
 
-     var LIMIT_VDBE_OP: Number
+    var LIMIT_VDBE_OP: Number
 
-     var LIMIT_FUNCTION_ARG: Number
+    var LIMIT_FUNCTION_ARG: Number
 
-     var LIMIT_ATTACHED: Number
+    var LIMIT_ATTACHED: Number
 
-     var LIMIT_LIKE_PATTERN_LENGTH: Number
+    var LIMIT_LIKE_PATTERN_LENGTH: Number
 
-     var LIMIT_VARIABLE_NUMBER: Number
+    var LIMIT_VARIABLE_NUMBER: Number
 
-     var LIMIT_TRIGGER_DEPTH: Number
+    var LIMIT_TRIGGER_DEPTH: Number
 
-     var LIMIT_WORKER_THREADS: Number
+    var LIMIT_WORKER_THREADS: Number
 
-     object cached {
+    object cached {
         fun Database(filename: String, callback: (self: Database, err: Error?) -> Unit = definedExternally): Database
         fun Database(filename: String, mode: Number = definedExternally, callback: (self: Database, err: Error?) -> Unit = definedExternally): Database
     }
 
-     interface RunResult : Statement {
+    interface RunResult : Statement {
         var lastID: Number
         var changes: Number
     }
 
-     open class Statement : events.EventEmitter {
+    open class Statement : events.EventEmitter {
         open fun bind(callback: (err: Error?) -> Unit = definedExternally): Statement /* this */
         open fun bind(): Statement /* this */
         open fun bind(vararg params: Any): Statement /* this */
@@ -145,17 +145,18 @@ external object Sqlite3 {
         open fun each(params: Any, callback: (self: RunResult, err: Error?, row: Any) -> Unit = definedExternally): Statement /* this */
     }
 
-     open class Database : events.EventEmitter {
+    open class Database : events.EventEmitter {
         constructor(filename: String, callback: (err: Error?) -> Unit = definedExternally)
         constructor(filename: String)
         constructor(filename: String, mode: Number = definedExternally, callback: (err: Error?) -> Unit = definedExternally)
         constructor(filename: String, mode: Number = definedExternally)
 
         open fun close(callback: (err: Error?) -> Unit = definedExternally)
-        open fun run(sql: String, callback: (self: RunResult, err: Error?) -> Unit = definedExternally): Database /* this */
-        open fun run(sql: String): Database /* this */
-        open fun run(sql: String, params: Any, callback: (self: RunResult, err: Error?) -> Unit = definedExternally): Database /* this */
-        open fun run(sql: String, params: Any): Database /* this */
+        open fun run(sql: String, callback: (self: Any?) -> Unit): Database /* this */
+
+        //        open fun run(sql: String): Database /* this */
+        open fun run(sql: String, params: Any, callback: (self: Any?) -> Unit = definedExternally): Database /* this */
+//        open fun run(sql: String, params: Any): Database /* this */
         open fun get(sql: String, callback: (self: Statement, err: Error?, row: Any) -> Unit = definedExternally): Database /* this */
         open fun get(sql: String): Database /* this */
         open fun get(sql: String, params: Any, callback: (self: Statement, err: Error?, row: Any) -> Unit = definedExternally): Database /* this */
@@ -182,10 +183,13 @@ external object Sqlite3 {
         open fun each(sql: String, params: Any): Database /* this */
         open fun each(sql: String, params: Any, callback: (self: Statement, err: Error?, row: Any) -> Unit = definedExternally): Database /* this */
         open fun exec(sql: String, callback: (self: Statement, err: Error?) -> Unit = definedExternally): Database /* this */
-        open fun prepare(sql: String, callback: (self: Statement, err: Error?) -> Unit = definedExternally): Statement
-        open fun prepare(sql: String): Statement
-        open fun prepare(sql: String, params: Any, callback: (self: Statement, err: Error?) -> Unit = definedExternally): Statement
-        open fun prepare(sql: String, params: Any): Statement
+
+        //open fun prepare(sql: String, callback: (self: Statement, err: Error?) -> Unit = definedExternally): Statement
+        //open fun prepare(sql: String, callback: (result: Any) -> Unit = definedExternally): Statement
+        //open fun prepare(sql: String): Statement
+        open fun prepare(sql: String, params: Any?, callback: (self: Any) -> Unit): Statement
+
+        //open fun prepare(sql: String, params: Any): Statement
         open fun serialize(callback: () -> Unit = definedExternally)
         open fun parallelize(callback: () -> Unit = definedExternally)
         open fun on(event: String /* "trace" */, listener: (sql: String) -> Unit): Database /* this */

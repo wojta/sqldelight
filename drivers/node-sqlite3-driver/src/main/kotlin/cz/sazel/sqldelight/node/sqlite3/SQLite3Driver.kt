@@ -3,7 +3,6 @@ package cz.sazel.sqldelight.node.sqlite3
 import app.cash.sqldelight.Query
 import app.cash.sqldelight.Transacter
 import app.cash.sqldelight.db.*
-import events.cz.sazel.sqldelight.node.sqlite3.SQLite3Exception
 import node.sqlite3.Sqlite3
 import node.sqlite3.Sqlite3.OPEN_CREATE
 import node.sqlite3.Sqlite3.OPEN_READWRITE
@@ -12,11 +11,29 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-
-fun initSqlite3Driver(
+suspend fun initSqlite3SqlDriver(
     filename: String, mode: Number = OPEN_CREATE.toInt() or OPEN_READWRITE.toInt(),
     schema: SqlSchema? = null,
-): SqlDriver = SQLite3Driver(Sqlite3.Database(filename, mode))
+): SqlDriver = SQLite3Driver(initSqlite3Database(filename, mode)).withSchema(schema)
+
+private suspend fun initSqlite3Database(
+    filename: String, mode: Number = OPEN_CREATE.toInt() or OPEN_READWRITE.toInt()
+): Sqlite3.Database =
+    suspendCoroutine { cont ->
+        var result: Result<Unit>? = null
+        val db = Sqlite3.Database(filename, mode, callback = {
+            result = if (it == null) Result.success(Unit) else Result.failure(it)
+        })
+        while (result == null) {
+            // expected
+        }
+        result?.let {
+            if (it.isSuccess) cont.resume(db)
+            else cont.resumeWithException(SQLite3Exception(it.exceptionOrNull()))
+        }
+    }
+
+suspend fun SqlDriver.withSchema(schema: SqlSchema? = null): SqlDriver = this.also { schema?.create(it)?.await() }
 
 class SQLite3Driver(private val db: Sqlite3.Database) : SqlDriver {
     private val listeners = mutableMapOf<String, MutableSet<Query.Listener>>()
@@ -28,10 +45,16 @@ class SQLite3Driver(private val db: Sqlite3.Database) : SqlDriver {
     ) : Transacter.Transaction() {
         override fun endTransaction(successful: Boolean): QueryResult<Unit> = QueryResult.AsyncValue {
             if (enclosingTransaction == null) {
-                if (successful) {
-                    //worker.run("END TRANSACTION")
-                } else {
-                    //worker.run("ROLLBACK TRANSACTION")
+                val sql = if (successful) "END TRANSACTION" else "ROLLBACK TRANSACTION"
+                suspendCoroutine { cont ->
+                    val callback: (Any) -> Unit = { self ->
+                        if (self !is Throwable) {
+                            cont.resume(self as Sqlite3.Statement)
+                        } else {
+                            cont.resumeWithException(SQLite3Exception(self))
+                        }
+                    }
+                    db.run(sql, callback)
                 }
             }
             transaction = enclosingTransaction
@@ -40,9 +63,19 @@ class SQLite3Driver(private val db: Sqlite3.Database) : SqlDriver {
 
     private suspend fun createOrGetStatement(identifier: Int?, sql: String): Sqlite3.Statement {
         val continuation: (Continuation<Sqlite3.Statement>) -> Unit = { cont ->
-            db.prepare(sql, callback = { self: Any, _ ->
-                if (self !is Error) cont.resume(self as Sqlite3.Statement) else cont.resumeWithException(SQLite3Exception(self))
-            })
+
+            val callback: (Any) -> Unit = { self ->
+                println("prepare() $self ${self::class.simpleName}")
+                if (self !is Throwable) {
+                    println("prepare resume ok")
+                    cont.resume(self as Sqlite3.Statement)
+                } else {
+                    println("prepare resume with exception $self")
+                    cont.resumeWithException(SQLite3Exception(self))
+                }
+            }
+            db.prepare(sql, null, callback)
+            println("After prepare")
         }
         return if (identifier == null) {
             suspendCoroutine(continuation)
@@ -51,21 +84,42 @@ class SQLite3Driver(private val db: Sqlite3.Database) : SqlDriver {
         }
     }
 
-    override fun <R> executeQuery(identifier: Int?, sql: String, mapper: (SqlCursor) -> R, parameters: Int, binders: (SqlPreparedStatement.() -> Unit)?): QueryResult<R> {
-        TODO("Not yet implemented")
+    override fun <R> executeQuery(identifier: Int?, sql: String, mapper: (SqlCursor) -> R, parameters: Int, binders: (SqlPreparedStatement.() -> Unit)?): QueryResult<R> =
+        QueryResult.AsyncValue {
+            val statement = createOrGetStatement(identifier, sql)
+            statement.bind(parameters, binders)
+            val cursor = SQLite3Cursor(statement)
+            mapper(cursor)
+        }
+
+    override fun execute(identifier: Int?, sql: String, parameters: Int, binders: (SqlPreparedStatement.() -> Unit)?): QueryResult<Long> = QueryResult.AsyncValue {
+        val statement = createOrGetStatement(identifier, sql)
+        statement.bind(parameters, binders)
+        statement.run()
+        return@AsyncValue 0
     }
 
-    override fun execute(identifier: Int?, sql: String, parameters: Int, binders: (SqlPreparedStatement.() -> Unit)?): QueryResult<Long> {
-        TODO("Not yet implemented")
+    override fun newTransaction(): QueryResult<Transacter.Transaction> = QueryResult.AsyncValue {
+        val enclosing = transaction
+        val transaction = Transaction(enclosing)
+        this.transaction = transaction
+        if (enclosing == null) {
+            suspendCoroutine { cont ->
+                val callback: (Any) -> Unit = { self ->
+                    if (self !is Throwable) {
+                        cont.resume(self as Sqlite3.Statement)
+                    } else {
+                        cont.resumeWithException(SQLite3Exception(self))
+                    }
+                }
+                db.run("BEGIN TRANSACTION", callback)
+            }
+        }
+
+        return@AsyncValue transaction
     }
 
-    override fun newTransaction(): QueryResult<Transacter.Transaction> {
-        TODO("Not yet implemented")
-    }
-
-    override fun currentTransaction(): Transacter.Transaction? {
-        TODO("Not yet implemented")
-    }
+    override fun currentTransaction(): Transacter.Transaction? = transaction
 
     override fun addListener(listener: Query.Listener, queryKeys: Array<String>) {
         queryKeys.forEach {
@@ -90,12 +144,6 @@ class SQLite3Driver(private val db: Sqlite3.Database) : SqlDriver {
             println(it)
         }
     }
-
-//    private fun createOrGetStatement(identifier: Int?, sql: String): Sqlite3.Statement = if (identifier == null) {
-//        db.prepare(sql)
-//    } else {
-//        statements.getOrPut(identifier, { db.prepare(sql) }).apply { reset() }
-//    }
 
     private fun Sqlite3.Statement.bind(parameters: Int, binders: (SqlPreparedStatement.() -> Unit)?) = binders?.let {
         if (parameters > 0) {

@@ -21,6 +21,9 @@ fun Promise<SqlDriver>.withSchema(schema: SqlSchema? = null): Promise<SqlDriver>
 
 fun Promise<SqlDriver>.transacter(): Promise<Transacter> = then { object : TransacterImpl(it) {} }
 
+suspend fun SqlDriver.withSchema(schema: SqlSchema? = null): SqlDriver = this.also { schema?.create(it)?.await() }
+
+
 fun initSqlDriver(schema: SqlSchema? = null): Promise<SqlDriver> = initDb().driver().withSchema(schema)
 
 class JsSqlDriver(private val db: Database) : SqlDriver {

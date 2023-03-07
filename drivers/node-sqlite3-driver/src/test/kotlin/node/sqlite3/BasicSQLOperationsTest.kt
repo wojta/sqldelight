@@ -24,25 +24,25 @@ class BasicSQLOperationsTest {
                 first_name TEXT NOT NULL,
                 last_name TEXT NOT NULL,
                 email TEXT NOT NULL UNIQUE,
-                phone TEXT NOT NULL UNIQUE);""", js("{}") as Any
-            ) { self, err ->
-                err?.let { cont.resumeWithException(err) } ?: cont.resume(self)
-            };
+                phone TEXT NOT NULL UNIQUE);""",
+            ) {
+                it?.let { cont.resumeWithException(it as Throwable) } ?: cont.resume(it)
+            }
         }
         val statement = suspendCoroutine { cont ->
             db.run(
                 "INSERT INTO contacts (contact_id,first_name,last_name,email,phone) " +
                         "VALUES (?,?,?,?,?)", js("[1, \"Petr\", \"Novak\", \"petr.novak@gmail.com\", \"1234\"]")
-            ) { self, err ->
-                err?.let { cont.resumeWithException(err) } ?: cont.resume(self)
+            ) {
+                it?.let { cont.resumeWithException(it as Throwable) } ?: cont.resume(it)
             }
         }
         val statement2 = suspendCoroutine { cont ->
             db.run(
                 "INSERT INTO contacts (contact_id,first_name,last_name,email,phone) " +
                         "VALUES (?,?,?,?,?)", listOf(2, "Pavel", "Novotny", "pavel.novotny@gmail.com", "5674").toTypedArray()
-            ) { self, err ->
-                err?.let { cont.resumeWithException(err) } ?: cont.resume(self)
+            ) {
+                it?.let { cont.resumeWithException(it as Throwable) } ?: cont.resume(it)
             }
         }
 
