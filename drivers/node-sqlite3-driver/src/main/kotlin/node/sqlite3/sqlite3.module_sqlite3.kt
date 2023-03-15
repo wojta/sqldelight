@@ -115,23 +115,30 @@ external object Sqlite3 {
     }
 
     open class Statement : events.EventEmitter {
-        open fun bind(callback: (err: Error?) -> Unit = definedExternally): Statement /* this */
-        open fun bind(): Statement /* this */
-        open fun bind(vararg params: Any): Statement /* this */
+        open fun bind(params: Array<Any?>, callback: (self: Any?) -> Unit = definedExternally): Statement /* this */
+
+        //        open fun bind(callback: (err: Error?) -> Unit = definedExternally): Statement /* this */
+//        open fun bind(): Statement /* this */
+//        open fun bind(vararg params: Any): Statement /* this */
         open fun reset(callback: (err: Nothing?) -> Unit = definedExternally): Statement /* this */
         open fun finalize(callback: (err: Error) -> Unit = definedExternally): Database
         open fun run(callback: (err: Error?) -> Unit = definedExternally): Statement /* this */
         open fun run(): Statement /* this */
-        open fun run(params: Any, callback: (self: RunResult, err: Error?) -> Unit = definedExternally): Statement /* this */
+
+        //open fun run(params: Any, callback: (self: RunResult, err: Error?) -> Unit = definedExternally): Statement /* this */
+        open fun run(params: Any, callback: (self: Any?) -> Unit): Statement
         open fun run(params: Any): Statement /* this */
         open fun get(callback: (err: Error?, row: Any) -> Unit = definedExternally): Statement /* this */
         open fun get(): Statement /* this */
         open fun get(params: Any, callback: (self: RunResult, err: Error?, row: Any) -> Unit = definedExternally): Statement /* this */
         open fun get(params: Any): Statement /* this */
-        open fun all(callback: (err: Error?, rows: Array<Any>) -> Unit = definedExternally): Statement /* this */
-        open fun all(): Statement /* this */
-        open fun all(params: Any, callback: (self: RunResult, err: Error?, rows: Array<Any>) -> Unit = definedExternally): Statement /* this */
-        open fun all(params: Any): Statement /* this */
+
+        open fun all(callback: (err: Error?, rows: Array<Array<dynamic>>) -> Unit = definedExternally): Statement /* this */
+//        open fun all(callback: (rows: Any) -> Unit): Statement /* this */
+
+        //open fun all(): Statement /* this */
+//        open fun all(params: Any, callback: (self: RunResult, err: Error?, rows: Array<Any>) -> Unit = definedExternally): Statement /* this */
+//        open fun all(params: Any): Statement /* this */
         open fun each(callback: (err: Error?, row: Any) -> Unit = definedExternally, complete: (err: Error?, count: Number) -> Unit = definedExternally): Statement /* this */
         open fun each(): Statement /* this */
         open fun each(callback: (err: Error?, row: Any) -> Unit = definedExternally): Statement /* this */
@@ -156,7 +163,8 @@ external object Sqlite3 {
 
         //        open fun run(sql: String): Database /* this */
         open fun run(sql: String, params: Any, callback: (self: Any?) -> Unit = definedExternally): Database /* this */
-//        open fun run(sql: String, params: Any): Database /* this */
+
+        //        open fun run(sql: String, params: Any): Database /* this */
         open fun get(sql: String, callback: (self: Statement, err: Error?, row: Any) -> Unit = definedExternally): Database /* this */
         open fun get(sql: String): Database /* this */
         open fun get(sql: String, params: Any, callback: (self: Statement, err: Error?, row: Any) -> Unit = definedExternally): Database /* this */
@@ -185,8 +193,9 @@ external object Sqlite3 {
         open fun exec(sql: String, callback: (self: Statement, err: Error?) -> Unit = definedExternally): Database /* this */
 
         //open fun prepare(sql: String, callback: (self: Statement, err: Error?) -> Unit = definedExternally): Statement
-        //open fun prepare(sql: String, callback: (result: Any) -> Unit = definedExternally): Statement
-        //open fun prepare(sql: String): Statement
+        open fun prepare(sql: String, callback: (self: Any) -> Unit): Statement
+
+        open fun prepare(sql: String): Statement
         open fun prepare(sql: String, params: Any?, callback: (self: Any) -> Unit): Statement
 
         //open fun prepare(sql: String, params: Any): Statement

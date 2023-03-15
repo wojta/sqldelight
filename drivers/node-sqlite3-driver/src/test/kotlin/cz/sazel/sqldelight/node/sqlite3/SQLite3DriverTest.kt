@@ -54,9 +54,13 @@ class SQLite3DriverTest {
 
     private fun runTest(block: suspend (SqlDriver) -> Unit) = kotlinx.coroutines.test.runTest {
         try {
+            js("require('fs').unlinkSync('test.db')")
             val driver = initSqlite3SqlDriver("test.db", schema = schema)
+            println("db test.db created")
             block(driver)
             driver.close()
+            println("deleteing db")
+            js("require('fs').unlinkSync('test.db')")
         } catch (e: Exception) {
             e.printStackTrace()
             fail(e.message)

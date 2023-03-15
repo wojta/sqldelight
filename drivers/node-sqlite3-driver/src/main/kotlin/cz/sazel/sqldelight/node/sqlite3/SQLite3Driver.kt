@@ -3,6 +3,9 @@ package cz.sazel.sqldelight.node.sqlite3
 import app.cash.sqldelight.Query
 import app.cash.sqldelight.Transacter
 import app.cash.sqldelight.db.*
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 import node.sqlite3.Sqlite3
 import node.sqlite3.Sqlite3.OPEN_CREATE
 import node.sqlite3.Sqlite3.OPEN_READWRITE
@@ -16,22 +19,9 @@ suspend fun initSqlite3SqlDriver(
     schema: SqlSchema? = null,
 ): SqlDriver = SQLite3Driver(initSqlite3Database(filename, mode)).withSchema(schema)
 
-private suspend fun initSqlite3Database(
+private fun initSqlite3Database(
     filename: String, mode: Number = OPEN_CREATE.toInt() or OPEN_READWRITE.toInt()
-): Sqlite3.Database =
-    suspendCoroutine { cont ->
-        var result: Result<Unit>? = null
-        val db = Sqlite3.Database(filename, mode, callback = {
-            result = if (it == null) Result.success(Unit) else Result.failure(it)
-        })
-        while (result == null) {
-            // expected
-        }
-        result?.let {
-            if (it.isSuccess) cont.resume(db)
-            else cont.resumeWithException(SQLite3Exception(it.exceptionOrNull()))
-        }
-    }
+): Sqlite3.Database = Sqlite3.Database(filename, mode)
 
 suspend fun SqlDriver.withSchema(schema: SqlSchema? = null): SqlDriver = this.also { schema?.create(it)?.await() }
 
@@ -61,41 +51,63 @@ class SQLite3Driver(private val db: Sqlite3.Database) : SqlDriver {
         }
     }
 
-    private suspend fun createOrGetStatement(identifier: Int?, sql: String): Sqlite3.Statement {
-        val continuation: (Continuation<Sqlite3.Statement>) -> Unit = { cont ->
-
-            val callback: (Any) -> Unit = { self ->
-                println("prepare() $self ${self::class.simpleName}")
-                if (self !is Throwable) {
-                    println("prepare resume ok")
-                    cont.resume(self as Sqlite3.Statement)
-                } else {
-                    println("prepare resume with exception $self")
-                    cont.resumeWithException(SQLite3Exception(self))
-                }
-            }
-            db.prepare(sql, null, callback)
-            println("After prepare")
-        }
-        return if (identifier == null) {
-            suspendCoroutine(continuation)
+    private fun createOrGetStatement(identifier: Int?, sql: String): Sqlite3.Statement {
+        val res = if (identifier == null) {
+            println("prepare suspend identifier==null")
+            db.prepare(sql)
         } else {
-            statements.getOrPut(identifier) { suspendCoroutine(continuation) }.apply { reset() }
+            statements.getOrPut(identifier) {
+                println("prepare suspend getOrPut($identifier)")
+                val res2 = db.prepare(sql)
+                println("prepare suspend getOrPut($identifier) end")
+                return@getOrPut res2
+            }
+//                .apply {
+//                println("reset")
+//                reset()
+//            }
         }
+        return res
     }
 
     override fun <R> executeQuery(identifier: Int?, sql: String, mapper: (SqlCursor) -> R, parameters: Int, binders: (SqlPreparedStatement.() -> Unit)?): QueryResult<R> =
         QueryResult.AsyncValue {
             val statement = createOrGetStatement(identifier, sql)
             statement.bind(parameters, binders)
-            val cursor = SQLite3Cursor(statement)
+            //TODO unfortunately it needs to fetch all rows as SqlCursor is not async friendly, this needs to be improved in future
+            val rows = suspendCoroutine { cont ->
+                statement.all { error, rows ->
+                    if (error is Throwable) {
+                        println("resuming with exception")
+                        cont.resumeWithException(error)
+                    } else {
+                        println("rows")
+                        cont.resume(rows)
+                    }
+                }
+            }
+
+
+            val cursor = SQLite3Cursor(rows)
             mapper(cursor)
         }
 
     override fun execute(identifier: Int?, sql: String, parameters: Int, binders: (SqlPreparedStatement.() -> Unit)?): QueryResult<Long> = QueryResult.AsyncValue {
+        println("execute(\"$sql\")")
         val statement = createOrGetStatement(identifier, sql)
         statement.bind(parameters, binders)
-        statement.run()
+        println("execute bound")
+        suspendCoroutine { cont ->
+            val callback: (Any) -> Unit = { self ->
+                if (self is Throwable) {
+                    cont.resumeWithException(SQLite3Exception(self))
+                } else {
+                    cont.resume(Unit)
+                }
+            }
+            statement.run(callback)
+        }
+        println("execute run")
         return@AsyncValue 0
     }
 
@@ -145,11 +157,22 @@ class SQLite3Driver(private val db: Sqlite3.Database) : SqlDriver {
         }
     }
 
-    private fun Sqlite3.Statement.bind(parameters: Int, binders: (SqlPreparedStatement.() -> Unit)?) = binders?.let {
+    private suspend fun Sqlite3.Statement.bind(
+        parameters: Int,
+        binders: (SqlPreparedStatement.() -> Unit)?
+    ) = binders?.let {
         if (parameters > 0) {
             val bound = SQLite3PreparedStatement(parameters)
             binders(bound)
-            bind(bound.parameters)
+            suspendCoroutine { cont ->
+                val callback: (Any?) -> Unit = {
+                    if (it is Throwable)
+                        cont.resumeWithException(it)
+                    else
+                        cont.resume(it)
+                }
+                bind(bound.parameters.toTypedArray(), callback)
+            }
         }
     }
 }
