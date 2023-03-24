@@ -3,13 +3,7 @@ package cz.sazel.sqldelight.node.sqlite3
 import app.cash.sqldelight.async.coroutines.await
 import app.cash.sqldelight.async.coroutines.awaitCreate
 import app.cash.sqldelight.async.coroutines.awaitQuery
-import app.cash.sqldelight.db.AfterVersion
-import app.cash.sqldelight.db.QueryResult
-import app.cash.sqldelight.db.SqlCursor
-import app.cash.sqldelight.db.SqlDriver
-import app.cash.sqldelight.db.SqlPreparedStatement
-import app.cash.sqldelight.db.SqlSchema
-import kotlinx.coroutines.await
+import app.cash.sqldelight.db.*
 import kotlin.test.*
 
 typealias InsertFunction = suspend (SqlPreparedStatement.() -> Unit) -> Unit
@@ -54,7 +48,7 @@ class SQLite3DriverTest {
 
     private fun runTest(block: suspend (SqlDriver) -> Unit) = kotlinx.coroutines.test.runTest {
         try {
-            js("require('fs').unlinkSync('test.db')")
+            js("var fs=require('fs'); if(fs.existsSync('test.db')) fs.unlinkSync('test.db')")
             val driver = initSqlite3SqlDriver("test.db", schema = schema)
             println("db test.db created")
             block(driver)

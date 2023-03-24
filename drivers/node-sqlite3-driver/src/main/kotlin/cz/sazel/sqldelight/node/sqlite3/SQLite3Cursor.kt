@@ -4,7 +4,14 @@ import app.cash.sqldelight.db.SqlCursor
 import org.khronos.webgl.Int8Array
 import org.khronos.webgl.Uint8Array
 
-internal class SQLite3Cursor(private val rows: Array<Array<dynamic>>) : SqlCursor {
+internal class SQLite3Cursor(result: Array<Array<dynamic>>) : SqlCursor {
+
+    private val rows: Array<Array<dynamic>>
+
+    init {
+        val jsObject = js("Object") //TODO this is weird, find way to improve
+        rows = result.map { jsObject.values(it) as Array<dynamic> }.toTypedArray()
+    }
 
     private var row = -1;
 
@@ -17,6 +24,7 @@ internal class SQLite3Cursor(private val rows: Array<Array<dynamic>>) : SqlCurso
         }
 
     private fun checkCursorState() {
+        js("Object")
         if (row < 0) throw SQLite3Exception("Cursor was not yet iterated, call next() first.")
     }
 
@@ -27,8 +35,8 @@ internal class SQLite3Cursor(private val rows: Array<Array<dynamic>>) : SqlCurso
 
     override fun getLong(index: Int): Long? {
         checkCursorState()
-
-        return rows[row][index] as Long?
+        val value = rows[row][index] as? Number
+        return value?.toLong()
     }
 
     override fun getBytes(index: Int): ByteArray? {
